@@ -2,18 +2,6 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8" />
-    <!-- iOS 微信中点击下载时，把当前页改成同源中转地址；外部浏览器打开后跳到附件链接。 -->
-    <script>
-        (() => {
-            const DOWNLOAD_HANDOFF_PARAM = 'se_download';
-            const DOWNLOAD_URL = 'https://nsma-web.schneider-electric.cn/platform/file/attachment/previewByUrl/eda08d684b1944bda08cbac02f128da0';
-            const isWeChat = /MicroMessenger|WeChatDevTools/i.test(navigator.userAgent || '');
-            const params = new URLSearchParams(window.location.search);
-            if (params.get(DOWNLOAD_HANDOFF_PARAM) === '1' && !isWeChat) {
-                window.location.replace(DOWNLOAD_URL);
-            }
-        })();
-    </script>
     <!-- Google Tag Manager：与火山埋点并行，异步加载失败不影响阅读器。 -->
     <script>
         (function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
@@ -111,7 +99,7 @@
             <button id="shareToastClose" class="share-toast-close" aria-label="关闭">×</button>
         </div>
 
-        <!-- iOS 微信无法由 H5 强制唤起外部浏览器，改为引导用户从微信菜单打开。 -->
+        <!-- 微信无法由 H5 强制唤起外部浏览器，改为引导用户从微信菜单打开当前阅读页。 -->
         <div id="wechatIosDownloadGuide" class="wechat-ios-download-guide" role="dialog"
              aria-modal="true" aria-labelledby="wechatIosDownloadTitle"
              aria-describedby="wechatIosDownloadDescription" hidden>
@@ -127,13 +115,13 @@
                     <div class="wechat-ios-download-copy">
                         <h2 id="wechatIosDownloadTitle">点击右上角“•••”</h2>
                         <p id="wechatIosDownloadDescription">
-                            选择“在浏览器中打开”<br />然后下载 PDF
+                            选择“在浏览器中打开”<br />打开当前页面后再下载 PDF
                         </p>
                     </div>
                 </div>
                 <div class="wechat-ios-download-actions">
                     <button type="button" id="wechatIosCopyDownloadLink" class="wechat-ios-download-copy-button">
-                        复制下载链接
+                        复制页面链接
                     </button>
                     <button type="button" id="wechatIosContinueDownload" class="wechat-ios-download-continue-button">
                         继续
