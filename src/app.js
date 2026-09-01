@@ -3983,9 +3983,8 @@ function openWechatIosDownloadGuide(download) {
     continueButton.focus({ preventScroll: true });
 }
 
-// 下载当前 PDF：PC 与移动端均交给浏览器处理业务附件直链。
-// Android 微信通过 PDF 新窗口触发浏览器接管；iOS 微信必须先让当前页进入附件直链，
-// 否则右上角“在浏览器中打开”只会把 Flipbook 阅读器 URL 交给系统浏览器。
+// 下载当前 PDF：PC 与移动端均交给浏览器处理业务附件直链，微信内置浏览器
+// Android 微信通过 PDF 新窗口触发浏览器接管；iOS 微信显示外部浏览器操作引导。
 // POC 阶段下载的是原始 PDF（不含标注）。
 export async function downloadPdf() {
     if (downloadInFlight) return;
@@ -4000,11 +3999,7 @@ export async function downloadPdf() {
 
     try {
         if (isIOSWeChatBrowser()) {
-            showShareToast('正在打开 PDF 下载链接：' + fileName);
-            // 必须使用当前窗口导航：微信的“在浏览器中打开”读取的是当前 WebView URL。
-            // 保留 history 记录，使用户仍可通过返回键回到 Flipbook。
-            trackFileDownload(pdfName, url, fileName, store.pdfFileSize);
-            window.location.assign(url);
+            openWechatIosDownloadGuide({ pdfName, url, fileName });
             return;
         }
 
