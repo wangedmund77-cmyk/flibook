@@ -167,8 +167,9 @@ try {
         document.getElementById('mobileDownloadBtn').click();
     })()` }, sessionId);
     const downloadResult = await waitForValue(cdp, sessionId, `window.__downloadTriggered`);
-    if (!downloadResult.href.startsWith('blob:') || !downloadResult.download.endsWith('.pdf')) {
-        throw new Error(`WAP 下载未使用 PDF Blob：${JSON.stringify(downloadResult)}`);
+    if (!downloadResult.href.includes('/previewByUrl/eda08d684b1944bda08cbac02f128da0')
+        || !downloadResult.download.endsWith('.pdf')) {
+        throw new Error(`WAP 下载未恢复附件直链：${JSON.stringify(downloadResult)}`);
     }
     await cdp.send('Runtime.evaluate', {
         expression: `window.__downloadTestRestore?.(); delete window.__downloadTestRestore;`,
@@ -241,19 +242,34 @@ try {
     await waitForValue(cdp, sessionId, `!window.__waitingForWechatReload
         && window.store?.pageFlip && document.body?.dataset?.platform === 'mobile'`);
     await cdp.send('Runtime.evaluate', { expression: `(() => {
-        window.__wechatDownloadNavigated = false;
-        HTMLAnchorElement.prototype.click = function () { window.__wechatDownloadNavigated = true; };
+        window.__wechatDownloadUrl = '';
+        HTMLAnchorElement.prototype.click = function () { window.__wechatDownloadUrl = this.href; };
         document.getElementById('mobileDownloadBtn').click();
     })()` }, sessionId);
+    const androidWechatUrl = await waitForValue(cdp, sessionId, `window.__wechatDownloadUrl`);
+    if (!androidWechatUrl.includes('/previewByUrl/eda08d684b1944bda08cbac02f128da0')) {
+        throw new Error(`Android 微信未恢复附件接管链接：${androidWechatUrl}`);
+    }
+
+    await cdp.send('Emulation.setUserAgentOverride', {
+        userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 Mobile MicroMessenger/8.0.50',
+        platform: 'iPhone',
+    }, sessionId);
+    await cdp.send('Runtime.evaluate', { expression: `window.__waitingForIosWechatReload = true` }, sessionId);
+    await cdp.send('Page.reload', { ignoreCache: true }, sessionId);
+    await waitForValue(cdp, sessionId, `!window.__waitingForIosWechatReload
+        && window.store?.pageFlip && document.body?.dataset?.platform === 'mobile'`);
+    await cdp.send('Runtime.evaluate', {
+        expression: `document.getElementById('mobileDownloadBtn').click()`,
+    }, sessionId);
     await waitForValue(cdp, sessionId, `document.getElementById('wechatIosDownloadGuide')?.hidden === false`);
     const wechatResult = await waitForValue(cdp, sessionId, `({
-        navigated: window.__wechatDownloadNavigated,
         hasLegacyHandoff: new URL(location.href).searchParams.has('se_download')
     })`);
-    if (wechatResult.navigated || wechatResult.hasLegacyHandoff) {
-        throw new Error(`微信端不应直接下载或跳转附件：${JSON.stringify(wechatResult)}`);
+    if (!wechatResult.hasLegacyHandoff) {
+        throw new Error(`iOS 微信未恢复下载中转参数：${JSON.stringify(wechatResult)}`);
     }
-    console.log('PASS: WAP 使用 Blob 下载；微信保留当前阅读页引导；目录、缩放与翻页正常');
+    console.log('PASS: 手机目录选择后自动关闭；下载回滚、内容缩放与翻页正常');
 } finally {
     if (cdp) {
         try { await cdp.send('Browser.close'); } catch { /* browser may already be gone */ }

@@ -55,6 +55,7 @@ const FIRST_INSERT_CONTENT_WAIT_MS = 1200;
 const DEFAULT_PDF_NAME = '“化”解之道-赢得化工企业绿色竞争力转型.pdf';
 const DEFAULT_DOWNLOAD_URL = 'https://nsma-web.schneider-electric.cn/platform/file/attachment/previewByUrl/eda08d684b1944bda08cbac02f128da0';
 const DEFAULT_DOWNLOAD_FILE_NAME = '“化”解之道-赢得化工企业绿色竞争力转型.pdf';
+const WECHAT_DOWNLOAD_HANDOFF_PARAM = 'se_download';
 // 放大态以 52px 翻页按钮条作为左右边界：按钮紧贴页面外侧，不额外留白。
 const PC_ZOOM_EDGE_GUTTER = 52;
 const PC_ZOOM_ARROW_GAP = 0;
@@ -3919,6 +3920,10 @@ function isIOSDevice() {
         || (/Macintosh/i.test(userAgent) && Number(navigator.maxTouchPoints) > 1);
 }
 
+function isIOSWeChatBrowser() {
+    return isIOSDevice() && isWeChatBrowser();
+}
+
 function getDownloadFileName(pdfName, url) {
     const baseName = String(pdfName || '').trim().split(/[\\/]/).pop().toLowerCase();
     if (baseName === DEFAULT_PDF_NAME.toLowerCase()) return DEFAULT_DOWNLOAD_FILE_NAME;
@@ -3963,12 +3968,41 @@ function triggerDownloadLink(url, fileName, { download = true, newTab = false } 
     }
 }
 
+function openPdfInBrowser(url) {
+    const opened = triggerDownloadLink(url, '', { download: false, newTab: true });
+    if (!opened) window.open(url, '_blank', 'noopener,noreferrer');
+    return opened;
+}
+
 function isValidFileSize(value) {
     return Number.isSafeInteger(value) && value >= 0;
 }
 
 function fileSizeBytesToKb(value) {
     return isValidFileSize(value) ? Math.round((value / 1024) * 100) / 100 : null;
+}
+
+async function getDownloadFileSize(url) {
+    if (isValidFileSize(store.pdfFileSize)) return store.pdfFileSize;
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 3000);
+    try {
+        const response = await fetch(url, {
+            method: 'HEAD',
+            credentials: 'same-origin',
+            signal: controller.signal,
+        });
+        const length = Number(response.headers.get('content-length'));
+        if (response.ok && isValidFileSize(length)) {
+            store.pdfFileSize = length;
+            return length;
+        }
+    } catch (error) {
+        console.warn('[download] 获取文件大小失败：', error);
+    } finally {
+        clearTimeout(timeout);
+    }
+    return null;
 }
 
 function trackFileDownload(pdfName, url, fileName, fileSize = null) {
@@ -3991,7 +4025,7 @@ function closeWechatIosDownloadGuide() {
 }
 
 async function copyWechatIosDownloadLink() {
-    const link = pendingWechatIosDownload?.pageUrl;
+    const link = pendingWechatIosDownload?.url;
     if (!link) return;
 
     let copied = false;
@@ -4015,13 +4049,13 @@ async function copyWechatIosDownloadLink() {
             if (textarea) textarea.remove();
         }
     }
-    showShareToast(copied ? '页面链接已复制，请粘贴到浏览器打开' : '复制失败，请使用微信右上角菜单打开');
+    showShareToast(copied ? '下载链接已复制，请粘贴到浏览器打开' : '复制失败，请使用微信右上角菜单打开');
 }
 
 function continueWechatIosDownload() {
     if (!pendingWechatIosDownload) return;
-    // “继续”仅收起提示；用户随后通过微信右上角菜单在系统浏览器打开当前阅读页，
-    // 再点击下载即可走普通移动浏览器的强制下载流程。
+    // “继续”仅收起提示；用户随后通过微信右上角菜单在系统浏览器打开当前页面，
+    // 再点击下载即可走普通移动浏览器的 PDF 直链流程。
     closeWechatIosDownloadGuide();
 }
 
@@ -4057,12 +4091,11 @@ function setupWechatIosDownloadGuide() {
     });
 }
 
-function openWechatDownloadGuide(download) {
-    // 清理旧版本遗留的下载中转参数，确保外部浏览器打开的是阅读页本身。
-    const pageUrl = new URL(window.location.href);
-    pageUrl.searchParams.delete('se_download');
-    if (pageUrl.href !== window.location.href && window.history?.replaceState) {
-        window.history.replaceState(window.history.state, '', pageUrl);
+function openWechatIosDownloadGuide(download) {
+    if (download?.url === DEFAULT_DOWNLOAD_URL && window.history?.replaceState) {
+        const handoffUrl = new URL(window.location.href);
+        handoffUrl.searchParams.set(WECHAT_DOWNLOAD_HANDOFF_PARAM, '1');
+        window.history.replaceState(window.history.state, '', handoffUrl);
     }
 
     setupWechatIosDownloadGuide();
@@ -4073,7 +4106,7 @@ function openWechatDownloadGuide(download) {
         return;
     }
 
-    pendingWechatIosDownload = { ...download, pageUrl: pageUrl.href };
+    pendingWechatIosDownload = download;
     wechatIosDownloadLastFocused = document.activeElement;
     guide.hidden = false;
     continueButton.focus({ preventScroll: true });
@@ -4092,8 +4125,7 @@ async function fetchVerifiedPdfBlob(url) {
     return blob;
 }
 
-// 普通 WAP / PC 浏览器通过 Blob 强制下载 PDF；微信只显示外部浏览器引导，
-// 让用户先用系统浏览器打开当前阅读页，不在微信 WebView 内直接下载。
+// WAP 与微信恢复原有直链/接管逻辑；PC 继续通过 Blob 强制下载 PDF。
 // POC 阶段下载的是原始 PDF（不含标注）。
 export async function downloadPdf() {
     if (downloadInFlight) return;
@@ -4104,10 +4136,26 @@ export async function downloadPdf() {
     const isDefaultPdf = pdfName.replaceAll(String.fromCharCode(92), '/').split('/').pop().toLowerCase() === DEFAULT_PDF_NAME.toLowerCase();
     const url = isDefaultPdf ? DEFAULT_DOWNLOAD_URL : resolveAppUrl(pdfName);
     const fileName = getDownloadFileName(pdfName, url);
+    const mobile = isMobileFn();
 
     try {
+        if (isIOSWeChatBrowser()) {
+            openWechatIosDownloadGuide({ pdfName, url, fileName });
+            return;
+        }
+
         if (isWeChatBrowser()) {
-            openWechatDownloadGuide({ pdfName, url, fileName });
+            openPdfInBrowser(url);
+            showShareToast('正在打开浏览器下载：' + fileName);
+            trackFileDownload(pdfName, url, fileName, await getDownloadFileSize(url));
+            return;
+        }
+
+        if (mobile) {
+            const triggered = triggerDownloadLink(url, fileName, { download: true, newTab: true });
+            if (!triggered) openPdfInBrowser(url);
+            showShareToast('已打开下载：' + fileName);
+            trackFileDownload(pdfName, url, fileName, await getDownloadFileSize(url));
             return;
         }
 
