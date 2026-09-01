@@ -4125,7 +4125,7 @@ async function fetchVerifiedPdfBlob(url) {
     return blob;
 }
 
-// WAP 与微信恢复原有直链/接管逻辑；PC 继续通过 Blob 强制下载 PDF。
+// 非微信的 PC / 手机浏览器统一通过 Blob 强制下载 PDF；微信保持原有接管/引导逻辑。
 // POC 阶段下载的是原始 PDF（不含标注）。
 export async function downloadPdf() {
     if (downloadInFlight) return;
@@ -4136,7 +4136,6 @@ export async function downloadPdf() {
     const isDefaultPdf = pdfName.replaceAll(String.fromCharCode(92), '/').split('/').pop().toLowerCase() === DEFAULT_PDF_NAME.toLowerCase();
     const url = isDefaultPdf ? DEFAULT_DOWNLOAD_URL : resolveAppUrl(pdfName);
     const fileName = getDownloadFileName(pdfName, url);
-    const mobile = isMobileFn();
 
     try {
         if (isIOSWeChatBrowser()) {
@@ -4147,14 +4146,6 @@ export async function downloadPdf() {
         if (isWeChatBrowser()) {
             openPdfInBrowser(url);
             showShareToast('正在打开浏览器下载：' + fileName);
-            trackFileDownload(pdfName, url, fileName, await getDownloadFileSize(url));
-            return;
-        }
-
-        if (mobile) {
-            const triggered = triggerDownloadLink(url, fileName, { download: true, newTab: true });
-            if (!triggered) openPdfInBrowser(url);
-            showShareToast('已打开下载：' + fileName);
             trackFileDownload(pdfName, url, fileName, await getDownloadFileSize(url));
             return;
         }

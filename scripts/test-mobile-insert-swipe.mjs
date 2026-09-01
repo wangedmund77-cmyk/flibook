@@ -167,9 +167,8 @@ try {
         document.getElementById('mobileDownloadBtn').click();
     })()` }, sessionId);
     const downloadResult = await waitForValue(cdp, sessionId, `window.__downloadTriggered`);
-    if (!downloadResult.href.includes('/previewByUrl/eda08d684b1944bda08cbac02f128da0')
-        || !downloadResult.download.endsWith('.pdf')) {
-        throw new Error(`WAP 下载未恢复附件直链：${JSON.stringify(downloadResult)}`);
+    if (!downloadResult.href.startsWith('blob:') || !downloadResult.download.endsWith('.pdf')) {
+        throw new Error(`非微信手机浏览器未直接下载 PDF Blob：${JSON.stringify(downloadResult)}`);
     }
     await cdp.send('Runtime.evaluate', {
         expression: `window.__downloadTestRestore?.(); delete window.__downloadTestRestore;`,
@@ -269,7 +268,7 @@ try {
     if (!wechatResult.hasLegacyHandoff) {
         throw new Error(`iOS 微信未恢复下载中转参数：${JSON.stringify(wechatResult)}`);
     }
-    console.log('PASS: 手机目录选择后自动关闭；下载回滚、内容缩放与翻页正常');
+    console.log('PASS: 非微信 PC/手机浏览器直接下载；微信逻辑不变；目录、缩放与翻页正常');
 } finally {
     if (cdp) {
         try { await cdp.send('Browser.close'); } catch { /* browser may already be gone */ }
