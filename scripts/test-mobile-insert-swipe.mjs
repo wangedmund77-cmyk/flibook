@@ -135,6 +135,32 @@ try {
     await waitForValue(cdp, sessionId, `window.store?.pageFlip && window.store.insertVisible === true`);
     await waitForValue(cdp, sessionId, `!document.getElementById('firstPagePreview')
         && window.store.pageFlip.getCurrentPageIndex() === 0`);
+    await cdp.send('Runtime.evaluate', { expression: `(() => {
+        const nativeFetch = window.fetch.bind(window);
+        const nativeAnchorClick = HTMLAnchorElement.prototype.click;
+        window.__downloadTestRestore = () => {
+            window.fetch = nativeFetch;
+            HTMLAnchorElement.prototype.click = nativeAnchorClick;
+        };
+        window.fetch = (input, init) => String(input).includes('/previewByUrl/')
+            ? Promise.resolve(new Response(
+                new Blob(['%PDF-1.7\\n%%EOF'], { type: 'application/pdf' }),
+                { status: 200, headers: { 'content-type': 'application/pdf' } }
+            ))
+            : nativeFetch(input, init);
+        HTMLAnchorElement.prototype.click = function () {
+            window.__downloadTriggered = { href: this.href, download: this.download };
+        };
+        document.getElementById('mobileDownloadBtn').click();
+    })()` }, sessionId);
+    const downloadResult = await waitForValue(cdp, sessionId, `window.__downloadTriggered`);
+    if (!downloadResult.href.startsWith('blob:') || !downloadResult.download.endsWith('.pdf')) {
+        throw new Error(`WAP 下载未使用 PDF Blob：${JSON.stringify(downloadResult)}`);
+    }
+    await cdp.send('Runtime.evaluate', {
+        expression: `window.__downloadTestRestore?.(); delete window.__downloadTestRestore;`,
+    }, sessionId);
+    await waitForValue(cdp, sessionId, `!document.getElementById('shareToast')?.classList.contains('show')`, 5000);
     const zoomTarget = await waitForValue(cdp, sessionId, `(() => {
         const canvas = document.querySelector('#flipbook .page[data-page-num="1"] canvas');
         const rect = canvas?.getBoundingClientRect();
@@ -192,7 +218,29 @@ try {
     await waitForValue(cdp, sessionId, `window.store.pageFlip.getCurrentPageIndex() === 1`, 5000);
     await dispatchSwipe(cdp, sessionId, rect, 'prev');
     await waitForValue(cdp, sessionId, `window.store.pageFlip.getCurrentPageIndex() === 0`, 5000);
-    console.log('PASS: 手机双指仅缩放内容，固定 UI 尺寸不变；自定义页左右滑动均可翻页');
+
+    await cdp.send('Emulation.setUserAgentOverride', {
+        userAgent: 'Mozilla/5.0 (Linux; Android 13) AppleWebKit/537.36 Mobile MicroMessenger/8.0.50',
+        platform: 'Android',
+    }, sessionId);
+    await cdp.send('Runtime.evaluate', { expression: `window.__waitingForWechatReload = true` }, sessionId);
+    await cdp.send('Page.reload', { ignoreCache: true }, sessionId);
+    await waitForValue(cdp, sessionId, `!window.__waitingForWechatReload
+        && window.store?.pageFlip && document.body?.dataset?.platform === 'mobile'`);
+    await cdp.send('Runtime.evaluate', { expression: `(() => {
+        window.__wechatDownloadNavigated = false;
+        HTMLAnchorElement.prototype.click = function () { window.__wechatDownloadNavigated = true; };
+        document.getElementById('mobileDownloadBtn').click();
+    })()` }, sessionId);
+    await waitForValue(cdp, sessionId, `document.getElementById('wechatIosDownloadGuide')?.hidden === false`);
+    const wechatResult = await waitForValue(cdp, sessionId, `({
+        navigated: window.__wechatDownloadNavigated,
+        hasLegacyHandoff: new URL(location.href).searchParams.has('se_download')
+    })`);
+    if (wechatResult.navigated || wechatResult.hasLegacyHandoff) {
+        throw new Error(`微信端不应直接下载或跳转附件：${JSON.stringify(wechatResult)}`);
+    }
+    console.log('PASS: WAP 使用 Blob 下载；微信保留当前阅读页引导；内容缩放与左右翻页正常');
 } finally {
     if (cdp) {
         try { await cdp.send('Browser.close'); } catch { /* browser may already be gone */ }

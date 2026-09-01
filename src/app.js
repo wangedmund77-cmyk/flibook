@@ -55,7 +55,6 @@ const FIRST_INSERT_CONTENT_WAIT_MS = 1200;
 const DEFAULT_PDF_NAME = '“化”解之道-赢得化工企业绿色竞争力转型.pdf';
 const DEFAULT_DOWNLOAD_URL = 'https://nsma-web.schneider-electric.cn/platform/file/attachment/previewByUrl/eda08d684b1944bda08cbac02f128da0';
 const DEFAULT_DOWNLOAD_FILE_NAME = '“化”解之道-赢得化工企业绿色竞争力转型.pdf';
-const WECHAT_DOWNLOAD_HANDOFF_PARAM = 'se_download';
 // 放大态以 52px 翻页按钮条作为左右边界：按钮紧贴页面外侧，不额外留白。
 const PC_ZOOM_EDGE_GUTTER = 52;
 const PC_ZOOM_ARROW_GAP = 0;
@@ -3920,10 +3919,6 @@ function isIOSDevice() {
         || (/Macintosh/i.test(userAgent) && Number(navigator.maxTouchPoints) > 1);
 }
 
-function isIOSWeChatBrowser() {
-    return isIOSDevice() && isWeChatBrowser();
-}
-
 function getDownloadFileName(pdfName, url) {
     const baseName = String(pdfName || '').trim().split(/[\\/]/).pop().toLowerCase();
     if (baseName === DEFAULT_PDF_NAME.toLowerCase()) return DEFAULT_DOWNLOAD_FILE_NAME;
@@ -3968,45 +3963,12 @@ function triggerDownloadLink(url, fileName, { download = true, newTab = false } 
     }
 }
 
-function openPdfInBrowser(url) {
-    // Android 微信会接管 PDF 新窗口并提示交给浏览器；iOS 微信不会稳定触发该流程，
-    // 因此 iOS 微信在调用此函数前先显示站内引导。
-    const opened = triggerDownloadLink(url, '', { download: false, newTab: true });
-    if (!opened) window.open(url, '_blank', 'noopener,noreferrer');
-    return opened;
-}
-
 function isValidFileSize(value) {
     return Number.isSafeInteger(value) && value >= 0;
 }
 
 function fileSizeBytesToKb(value) {
     return isValidFileSize(value) ? Math.round((value / 1024) * 100) / 100 : null;
-}
-
-async function getDownloadFileSize(url) {
-    if (isValidFileSize(store.pdfFileSize)) return store.pdfFileSize;
-
-    // Range 不可用时，用同源 HEAD 获取文件长度，避免为埋点重复下载整份 PDF。
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 3000);
-    try {
-        const response = await fetch(url, {
-            method: 'HEAD',
-            credentials: 'same-origin',
-            signal: controller.signal,
-        });
-        const length = Number(response.headers.get('content-length'));
-        if (response.ok && isValidFileSize(length)) {
-            store.pdfFileSize = length;
-            return length;
-        }
-    } catch (error) {
-        console.warn('[download] 获取文件大小失败：', error);
-    } finally {
-        clearTimeout(timeout);
-    }
-    return null;
 }
 
 function trackFileDownload(pdfName, url, fileName, fileSize = null) {
@@ -4029,7 +3991,7 @@ function closeWechatIosDownloadGuide() {
 }
 
 async function copyWechatIosDownloadLink() {
-    const link = pendingWechatIosDownload?.url;
+    const link = pendingWechatIosDownload?.pageUrl;
     if (!link) return;
 
     let copied = false;
@@ -4053,13 +4015,13 @@ async function copyWechatIosDownloadLink() {
             if (textarea) textarea.remove();
         }
     }
-    showShareToast(copied ? '下载链接已复制，请粘贴到浏览器打开' : '复制失败，请使用微信右上角菜单打开');
+    showShareToast(copied ? '页面链接已复制，请粘贴到浏览器打开' : '复制失败，请使用微信右上角菜单打开');
 }
 
 function continueWechatIosDownload() {
     if (!pendingWechatIosDownload) return;
-    // “继续”仅收起提示；用户随后通过微信右上角菜单在系统浏览器打开当前页面，
-    // 再点击下载即可走普通移动浏览器的 PDF 直链流程。
+    // “继续”仅收起提示；用户随后通过微信右上角菜单在系统浏览器打开当前阅读页，
+    // 再点击下载即可走普通移动浏览器的强制下载流程。
     closeWechatIosDownloadGuide();
 }
 
@@ -4095,13 +4057,12 @@ function setupWechatIosDownloadGuide() {
     });
 }
 
-function openWechatIosDownloadGuide(download) {
-    // 微信“在浏览器中打开”传递的是当前 WebView URL。改成同源中转 URL 不会离开
-    // 当前阅读器；外部浏览器打开该地址时，由 index.html 跳转到正式附件链接。
-    if (download?.url === DEFAULT_DOWNLOAD_URL && window.history?.replaceState) {
-        const handoffUrl = new URL(window.location.href);
-        handoffUrl.searchParams.set(WECHAT_DOWNLOAD_HANDOFF_PARAM, '1');
-        window.history.replaceState(window.history.state, '', handoffUrl);
+function openWechatDownloadGuide(download) {
+    // 清理旧版本遗留的下载中转参数，确保微信右上角菜单交给外部浏览器的是阅读页本身。
+    const pageUrl = new URL(window.location.href);
+    pageUrl.searchParams.delete('se_download');
+    if (pageUrl.href !== window.location.href && window.history?.replaceState) {
+        window.history.replaceState(window.history.state, '', pageUrl);
     }
 
     setupWechatIosDownloadGuide();
@@ -4112,14 +4073,27 @@ function openWechatIosDownloadGuide(download) {
         return;
     }
 
-    pendingWechatIosDownload = download;
+    pendingWechatIosDownload = { ...download, pageUrl: pageUrl.href };
     wechatIosDownloadLastFocused = document.activeElement;
     guide.hidden = false;
     continueButton.focus({ preventScroll: true });
 }
 
-// 下载当前 PDF：PC 与移动端均交给浏览器处理业务附件直链，微信内置浏览器
-// Android 微信通过 PDF 新窗口触发浏览器接管；iOS 微信显示外部浏览器操作引导。
+async function fetchVerifiedPdfBlob(url) {
+    const response = await fetch(url, { credentials: 'same-origin' });
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    const contentType = (response.headers.get('content-type') || '').toLowerCase();
+    const blob = await response.blob();
+    if (contentType && !contentType.includes('pdf') && !contentType.includes('octet-stream')) {
+        throw new Error(`响应类型不是 PDF：${contentType}`);
+    }
+    const header = await blob.slice(0, 1024).text();
+    if (!header.includes('%PDF-')) throw new Error('响应内容不是 PDF 文件');
+    return blob;
+}
+
+// 普通 WAP / PC 浏览器把 PDF 读取为 Blob 后强制下载；微信内只显示外部浏览器引导，
+// 让用户先用系统浏览器打开当前阅读页，不在微信 WebView 内直接下载文件。
 // POC 阶段下载的是原始 PDF（不含标注）。
 export async function downloadPdf() {
     if (downloadInFlight) return;
@@ -4130,54 +4104,21 @@ export async function downloadPdf() {
     const isDefaultPdf = pdfName.replaceAll(String.fromCharCode(92), '/').split('/').pop().toLowerCase() === DEFAULT_PDF_NAME.toLowerCase();
     const url = isDefaultPdf ? DEFAULT_DOWNLOAD_URL : resolveAppUrl(pdfName);
     const fileName = getDownloadFileName(pdfName, url);
-    const mobile = isMobileFn();
 
     try {
-        if (isIOSWeChatBrowser()) {
-            openWechatIosDownloadGuide({ pdfName, url, fileName });
-            return;
-        }
-
         if (isWeChatBrowser()) {
-            openPdfInBrowser(url);
-            showShareToast('正在打开浏览器下载：' + fileName);
-            trackFileDownload(pdfName, url, fileName, await getDownloadFileSize(url));
+            openWechatDownloadGuide({ pdfName, url, fileName });
             return;
         }
 
-        if (mobile) {
-            // 移动浏览器对 Blob URL 的下载支持不稳定，直接交给浏览器处理 PDF 直链；
-            // 支持 download 属性的浏览器会下载，不支持的浏览器会在新页打开 PDF 查看器。
-            const triggered = triggerDownloadLink(url, fileName, { download: true, newTab: true });
-            if (!triggered) openPdfInBrowser(url);
-            showShareToast('已打开下载：' + fileName);
-            trackFileDownload(pdfName, url, fileName, await getDownloadFileSize(url));
-            return;
-        }
-
-        // PC 浏览器优先走原生同源下载，避免 fetch 大文件再转 Blob 时失败。
-        if (triggerDownloadLink(url, fileName)) {
-            showShareToast('已开始下载：' + fileName);
-            trackFileDownload(pdfName, url, fileName, await getDownloadFileSize(url));
-            return;
-        }
-
-        // 兼容不支持 HTML download 属性的旧浏览器：保留 Blob 兜底，并拒绝把 SPA 回退页
-        // 或错误页伪装成 PDF 下载。
-        const resp = await fetch(url, { credentials: 'same-origin' });
-        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-        const contentType = (resp.headers.get('content-type') || '').toLowerCase();
-        const blob = await resp.blob();
-        if (contentType && !contentType.includes('pdf') && !contentType.includes('octet-stream')) {
-            throw new Error(`响应类型不是 PDF：${contentType}`);
-        }
-        const header = await blob.slice(0, 1024).text();
-        if (!header.includes('%PDF-')) throw new Error('响应内容不是 PDF 文件');
+        showShareToast('正在准备下载：' + fileName);
+        const blob = await fetchVerifiedPdfBlob(url);
         const objectUrl = URL.createObjectURL(blob);
         try {
             if (!triggerDownloadLink(objectUrl, fileName)) throw new Error('浏览器不支持下载链接');
         } finally {
-            setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
+            // 移动浏览器可能延迟接管 Blob 下载，保留一分钟再释放对象 URL。
+            setTimeout(() => URL.revokeObjectURL(objectUrl), 60000);
         }
         showShareToast('已开始下载：' + fileName);
         trackFileDownload(pdfName, url, fileName, blob.size);
