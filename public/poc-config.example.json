@@ -1,0 +1,28 @@
+{
+  "_comment": "模板：把这份拷到 poc-config.json 后修改；poc 启动时只读 poc-config.json。",
+
+  "pdf": {
+    "path": "sample.pdf",
+    "name": "sample.pdf"
+  },
+
+  "insertions": [
+    {
+      "afterPage": 6,
+      "htmlUrl": "/data/extracted/中段视频_V1.html"
+    },
+    {
+      "afterPage": 12,
+      "htmlUrl": "/data/extracted/案例视频_C1.html"
+    }
+  ],
+
+  "_schema": {
+    "pdf.path":     "字符串，相对站点根（去掉前导 /），位于 public/ 下，例如 \"sample.pdf\"",
+    "pdf.name":     "可留空，自动取 path 的文件名；用于标题展示",
+    "insertions":   "数组，可空",
+    "afterPage":    "非负整数，0 表示插在首页之前；1 表示插在原 PDF 第 1 页之后；以此类推",
+    "htmlUrl":      "字符串，相对于站点根的 URL，例如 \"/data/extracted/xxx.html\"；vite dev server 默认就能读项目根下任意静态文件，prod 构建则由 vite 的 public 复制规则决定",
+    "sameAfterPage": "多个插入项使用相同 afterPage 时，按它们在数组里的顺序，依次插在目标页之后"
+  }
+}

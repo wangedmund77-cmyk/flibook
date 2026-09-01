@@ -1,0 +1,486 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8" />
+    <!-- Google Tag Manager：与火山埋点并行，异步加载失败不影响阅读器。 -->
+    <script>
+        (function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+        new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+        j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+        'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+        })(window,document,'script','dataLayer','GTM-5FNTJ49');
+    </script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover" />
+    <title>“化”解之道-赢得化工企业绿色竞争力转型</title>
+    <link rel="icon" href="https://www.schneider-electric.cn/favicon.ico" type="image/x-icon" />
+    <link rel="preload" href="first-page-preview.webp" as="image" type="image/webp" fetchpriority="high" />
+    <link rel="stylesheet" href="/src/style.css" />
+</head>
+<body>
+    <!-- Google Tag Manager (noscript) -->
+    <noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-5FNTJ49"
+        height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
+    <!-- End Google Tag Manager (noscript) -->
+    <div class="app-container">
+        <!-- 左侧 50px 图标栏（PC 端导航） -->
+        <nav class="left-rail" aria-label="阅读器工具栏">
+            <button class="rail-btn" id="homeBtn" title="回到首页" aria-label="回到首页">
+                <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M3 11.5 12 4l9 7.5" />
+                    <path d="M5 10v9a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-9" />
+                </svg>
+            </button>
+            <button class="rail-btn" id="tocBtn" title="目录" aria-label="目录">
+                <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="4" y1="7" x2="20" y2="7" />
+                    <line x1="4" y1="12" x2="20" y2="12" />
+                    <line x1="4" y1="17" x2="20" y2="17" />
+                </svg>
+            </button>
+            <button class="rail-btn" id="thumbBtn" title="缩略图" aria-label="缩略图">
+                <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="3.5" y="3.5" width="7" height="7" rx="1" />
+                    <rect x="13.5" y="3.5" width="7" height="7" rx="1" />
+                    <rect x="3.5" y="13.5" width="7" height="7" rx="1" />
+                    <rect x="13.5" y="13.5" width="7" height="7" rx="1" />
+                </svg>
+            </button>
+            <button class="rail-btn" id="searchBtn" title="搜索" aria-label="搜索">
+                <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="11" cy="11" r="7" />
+                    <line x1="16.5" y1="16.5" x2="21" y2="21" />
+                </svg>
+            </button>
+            <button class="rail-btn" id="zoomBtn" title="缩放" aria-label="缩放">
+                <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="11" cy="11" r="7" />
+                    <line x1="16.5" y1="16.5" x2="21" y2="21" />
+                    <line x1="11" y1="8" x2="11" y2="14" />
+                    <line x1="8" y1="11" x2="14" y2="11" />
+                </svg>
+            </button>
+            <button class="rail-btn" id="fullscreenBtn" title="全屏" aria-label="全屏">
+                <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M4 9V4h5" />
+                    <path d="M20 9V4h-5" />
+                    <path d="M4 15v5h5" />
+                    <path d="M20 15v5h-5" />
+                </svg>
+            </button>
+            <button class="rail-btn" id="shareBtn" title="分享本页" aria-label="分享本页">
+                <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="18" cy="5" r="3" />
+                    <circle cx="6" cy="12" r="3" />
+                    <circle cx="18" cy="19" r="3" />
+                    <line x1="8.6" y1="13.5" x2="15.4" y2="17.5" />
+                    <line x1="15.4" y1="6.5" x2="8.6" y2="10.5" />
+                </svg>
+            </button>
+            <button class="rail-btn" id="downloadBtn" title="下载PDF" aria-label="下载PDF">
+                <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M12 3v12" />
+                    <path d="M7 11l5 5 5-5" />
+                    <path d="M5 21h14" />
+                </svg>
+            </button>
+            <button class="rail-btn" id="gotoBtn" title="跳转到指定页" aria-label="跳转到指定页">
+                <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M4 5h16" />
+                    <path d="M4 12h10" />
+                    <path d="M4 19h16" />
+                    <path d="M17 9.5 19.5 12 17 14.5" />
+                </svg>
+            </button>
+        </nav>
+
+        <!-- 分享链接提示条 -->
+        <div id="shareToast" class="share-toast" role="status" aria-live="polite">
+            <span id="shareToastText">链接已复制到剪贴板</span>
+            <button id="shareToastClose" class="share-toast-close" aria-label="关闭">×</button>
+        </div>
+
+        <!-- iOS 微信无法由 H5 强制唤起外部浏览器，改为引导用户从微信菜单打开。 -->
+        <div id="wechatIosDownloadGuide" class="wechat-ios-download-guide" role="dialog"
+             aria-modal="true" aria-labelledby="wechatIosDownloadTitle"
+             aria-describedby="wechatIosDownloadDescription" hidden>
+            <div class="wechat-ios-download-card">
+                <div class="wechat-ios-download-content">
+                    <span class="wechat-ios-download-icon" aria-hidden="true">
+                        <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor">
+                            <circle cx="5" cy="12" r="2" />
+                            <circle cx="12" cy="12" r="2" />
+                            <circle cx="19" cy="12" r="2" />
+                        </svg>
+                    </span>
+                    <div class="wechat-ios-download-copy">
+                        <h2 id="wechatIosDownloadTitle">点击右上角“•••”</h2>
+                        <p id="wechatIosDownloadDescription">
+                            选择“在浏览器中打开”<br />然后下载 PDF
+                        </p>
+                    </div>
+                </div>
+                <div class="wechat-ios-download-actions">
+                    <button type="button" id="wechatIosCopyDownloadLink" class="wechat-ios-download-copy-button">
+                        复制下载链接
+                    </button>
+                    <button type="button" id="wechatIosContinueDownload" class="wechat-ios-download-continue-button">
+                        继续
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 中间主内容区 -->
+        <main class="main-content">
+            <!-- PC 缩放悬浮条（顶部居中，点缩放图标后浮现，轻盈替代原抽屉缩放视图） -->
+            <div class="zoom-bar" id="zoomBar" role="toolbar" aria-label="缩放控制" aria-hidden="true">
+                <button class="zoom-bar-btn" id="zoomOutBtnBar" aria-label="缩小">&minus;</button>
+                <span class="zoom-bar-level" id="zoomLevelBar">100%</span>
+                <input type="range" id="zoomRangeBar" class="zoom-bar-range" min="100" max="300" step="5" value="100" aria-label="缩放滑块" />
+                <button class="zoom-bar-btn" id="zoomInBtnBar" aria-label="放大">&plus;</button>
+                <button class="zoom-bar-close" id="zoomBarClose" title="关闭" aria-label="关闭">&times;</button>
+            </div>
+            <!-- PC 跳页气泡（左下角，轻盈替代对话框） -->
+            <div class="goto-popover" id="gotoPopover" role="dialog" aria-label="跳转到页" aria-hidden="true">
+                <label class="goto-label" for="gotoInput">跳至</label>
+                <input type="number" id="gotoInput" class="goto-input" min="1" value="1" aria-label="页码" />
+                <span class="goto-total" id="gotoTotal">/ 1</span>
+                <button class="goto-go" id="gotoGo">确定</button>
+            </div>
+            <div class="book-container">
+                <button class="pc-page-arrow pc-page-arrow-prev" id="pcPrevPageBtn" type="button"
+                        aria-label="上一页" title="上一页" disabled>
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M15 18 9 12l6-6" />
+                    </svg>
+                </button>
+                <button class="pc-page-arrow pc-page-arrow-next" id="pcNextPageBtn" type="button"
+                        aria-label="下一页" title="下一页" disabled>
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="m9 18 6-6-6-6" />
+                    </svg>
+                </button>
+                <div id="firstPagePreview" class="first-page-preview" aria-label="PDF 第一页预览">
+                    <img id="firstPagePreviewImage" src="first-page-preview.webp" alt="“化”解之道白皮书封面" fetchpriority="high" decoding="async" />
+                </div>
+                <!-- 分享到正文页时在 HTML 解析阶段就移除封面，避免主模块加载前首帧闪出首页。 -->
+                <script>
+                    (() => {
+                        const sharedPage = Number.parseInt(new URLSearchParams(window.location.search).get('page'), 10);
+                        if (Number.isInteger(sharedPage) && sharedPage > 1) {
+                            document.getElementById('firstPagePreview')?.remove();
+                            window.__flipbookSharePreviewSkipped = true;
+                        }
+                    })();
+                </script>
+                <!-- Bind the first swipe as soon as the visible cover enters the DOM. -->
+                <script>
+                    (() => {
+                        const preview = document.getElementById('firstPagePreview');
+                        if (!preview) return;
+                        preview.style.touchAction = 'none';
+                        let start = null;
+                        const isMobile = () => matchMedia('(max-width: 768px) and (pointer: coarse)').matches;
+                        const queueNext = (corner = 'bottom') => {
+                            window.__flipbookPreviewNextRequested = true;
+                            window.__flipbookPreviewNextCorner = corner;
+                            preview.classList.add('is-queued');
+                        };
+                        preview.addEventListener('touchstart', (event) => {
+                            if (!isMobile() || event.touches.length !== 1) return;
+                            const touch = event.touches[0];
+                            start = { x: touch.clientX, y: touch.clientY };
+                        }, { passive: true });
+                        preview.addEventListener('touchmove', (event) => {
+                            if (!isMobile() || !start || event.touches.length !== 1) return;
+                            const touch = event.touches[0];
+                            const dx = touch.clientX - start.x;
+                            const dy = touch.clientY - start.y;
+                            if (Math.abs(dx) > 10 && Math.abs(dx) > Math.abs(dy) * 1.2) {
+                                preview.classList.add('is-swiping');
+                                event.preventDefault();
+                            }
+                        }, { passive: false });
+                        preview.addEventListener('touchend', (event) => {
+                            if (!isMobile() || !start || event.changedTouches.length !== 1) return;
+                            const touch = event.changedTouches[0];
+                            const dx = touch.clientX - start.x;
+                            const dy = touch.clientY - start.y;
+                            start = null;
+                            if (dx < -30 && Math.abs(dx) > Math.abs(dy) * 1.2) {
+                                event.preventDefault();
+                                event.stopPropagation();
+                                queueNext('bottom');
+                            }
+                            preview.classList.remove('is-swiping');
+                        }, { passive: false });
+                        preview.addEventListener('touchcancel', () => {
+                            start = null;
+                            preview.classList.remove('is-swiping');
+                        }, { passive: true });
+                        // 首次布局尚未稳定时预览层可能暂时未铺满屏幕，文档捕获兜底可避免中部左滑落到外层而丢失。
+                        const isExcludedTarget = (target) => target?.closest?.('.mobile-toolbar, .mobile-drawer, button, input, textarea, select');
+                        let documentStart = null;
+                        document.addEventListener('touchstart', (event) => {
+                            if (!preview.isConnected || preview.classList.contains('is-hidden') || !isMobile() || isExcludedTarget(event.target) || event.touches.length !== 1) return;
+                            const touch = event.touches[0];
+                            documentStart = { x: touch.clientX, y: touch.clientY };
+                        }, { passive: true, capture: true });
+                        document.addEventListener('touchmove', (event) => {
+                            if (!preview.isConnected || preview.classList.contains('is-hidden') || !isMobile() || !documentStart || event.touches.length !== 1) return;
+                            const touch = event.touches[0];
+                            const dx = touch.clientX - documentStart.x;
+                            const dy = touch.clientY - documentStart.y;
+                            if (Math.abs(dx) > 10 && Math.abs(dx) > Math.abs(dy) * 1.2) {
+                                preview.classList.add('is-swiping');
+                                event.preventDefault();
+                            }
+                        }, { passive: false, capture: true });
+                        document.addEventListener('touchend', (event) => {
+                            if (!preview.isConnected || preview.classList.contains('is-hidden') || !isMobile() || !documentStart || event.changedTouches.length !== 1) return;
+                            const touch = event.changedTouches[0];
+                            const dx = touch.clientX - documentStart.x;
+                            const dy = touch.clientY - documentStart.y;
+                            documentStart = null;
+                            preview.classList.remove('is-swiping');
+                            if (dx < -30 && Math.abs(dx) > Math.abs(dy) * 1.2) {
+                                event.preventDefault();
+                                event.stopPropagation();
+                                queueNext('bottom');
+                            }
+                        }, { passive: false, capture: true });
+                        document.addEventListener('touchcancel', () => {
+                            documentStart = null;
+                            preview.classList.remove('is-swiping');
+                        }, { passive: true, capture: true });
+                        window.__flipbookEarlySwipeReady = true;
+                    })();
+                </script>
+                <div id="zoomWrap">
+                    <div id="flipbook"></div>
+                </div>
+                <div id="flipHintBar" class="flip-hint-bar hidden" role="status" aria-live="polite" aria-hidden="true">
+                    <img class="flip-hint-gif" data-src="/pdf/flip-swipe-hint.gif" width="196" height="132" alt="" />
+                    <span class="flip-hint-title">左右滑动翻页</span>
+                    <span class="flip-hint-subtitle">也可以点击页面四角</span>
+                </div>
+                <script>
+                    (() => {
+                    const bar = document.getElementById('flipHintBar');
+                        if (!bar || !matchMedia('(max-width: 768px) and (pointer: coarse)').matches) return;
+
+                        // 分享深链优先展示目标页，不让首次 GIF 覆盖目标页加载过程。
+                        const sharedPage = Number.parseInt(new URLSearchParams(window.location.search).get('page'), 10);
+                        if (Number.isInteger(sharedPage) && sharedPage >= 1) return;
+
+                        const seenKey = 'flipSwipeGifSeenV1';
+                        let seen = false;
+                        try { seen = localStorage.getItem(seenKey) === '1'; } catch (e) { /* 隐私模式下仍显示 */ }
+                        if (seen) return;
+
+                        const gif = bar.querySelector('.flip-hint-gif');
+                        if (gif && !gif.getAttribute('src')) gif.src = gif.dataset.src;
+                        bar.classList.remove('hidden');
+                        bar.setAttribute('aria-hidden', 'false');
+                        window.__flipSwipeHintShownAt = Date.now();
+                        try { localStorage.setItem(seenKey, '1'); } catch (e) { /* 隐私模式下无法持久化 */ }
+                        const hideHint = () => {
+                            bar.classList.add('hidden');
+                            bar.setAttribute('aria-hidden', 'true');
+                            if (window.__flipSwipeHintDismissHandler) {
+                                document.removeEventListener('pointerdown', window.__flipSwipeHintDismissHandler, true);
+                                document.removeEventListener('touchstart', window.__flipSwipeHintDismissHandler, true);
+                                document.removeEventListener('mousedown', window.__flipSwipeHintDismissHandler, true);
+                                document.removeEventListener('click', window.__flipSwipeHintDismissHandler, true);
+                                window.__flipSwipeHintDismissHandler = null;
+                            }
+                            if (window.__flipSwipeHintTimer) {
+                                clearTimeout(window.__flipSwipeHintTimer);
+                                window.__flipSwipeHintTimer = null;
+                            }
+                        };
+                        window.__hideFlipSwipeHint = hideHint;
+                        window.__flipSwipeHintDismissHandler = hideHint;
+                        document.addEventListener('pointerdown', hideHint, { capture: true, passive: true });
+                        document.addEventListener('touchstart', hideHint, { capture: true, passive: true });
+                        document.addEventListener('mousedown', hideHint, { capture: true, passive: true });
+                        document.addEventListener('click', hideHint, { capture: true, passive: true });
+                        window.__flipSwipeHintTimer = setTimeout(hideHint, 6000);
+                    })();
+                </script>
+            </div>
+            <!-- PC / 手机端翻页滑块（拖动翻页，页码 tooltip 跟随 thumb 显示） -->
+            <div class="page-slider-bar" id="pageSliderBar" role="slider" aria-label="翻页滑块" aria-valuemin="1" aria-valuenow="1">
+                <span class="page-slider-tip" id="pageSliderTip">1 / 1</span>
+                <input type="range" id="pageSlider" class="page-slider-range" min="1" max="1" step="1" value="1" aria-label="页面进度" />
+            </div>
+        </main>
+
+        <!-- PC 端左侧抽屉（从图标栏旁滑出） -->
+        <div class="pc-backdrop" id="pcBackdrop"></div>
+        <aside class="pc-drawer" id="pcDrawer" aria-hidden="true">
+            <div class="pc-drawer-header">
+                <span id="pcDrawerTitle">目录</span>
+                <button class="pc-drawer-close" id="pcDrawerClose" title="关闭" aria-label="关闭">&times;</button>
+            </div>
+            <div class="pc-drawer-body">
+                <!-- 目录视图 -->
+                <div class="pc-view" id="pcViewToc">
+                    <div id="tocList" class="toc-list"></div>
+                </div>
+                <!-- 缩略图视图 -->
+                <div class="pc-view" id="pcViewThumb">
+                    <div id="thumbnailList" class="thumbnail-list"></div>
+                </div>
+                <!-- 搜索视图 -->
+                <div class="pc-view" id="pcViewSearch">
+                    <div class="search-box pc-search-box">
+                        <input type="text" id="searchInput" placeholder="输入关键字搜索..." />
+                        <button id="searchBtnInner">搜索</button>
+                    </div>
+                    <div id="searchResults" class="search-results"></div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- 移动端 UI（手机端，保持原有逻辑，不修改） -->
+        <div class="mobile-toolbar">
+            <button class="mobile-icon-btn" id="mobileHomeBtn" title="首页" aria-label="首页">
+                <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M3 11.5 12 4l9 7.5" />
+                    <path d="M5 10v9a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-9" />
+                </svg>
+            </button>
+            <button class="mobile-icon-btn" id="mobileTocBtn" title="目录" aria-label="目录">
+                <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="4" y1="7" x2="20" y2="7" />
+                    <line x1="4" y1="12" x2="20" y2="12" />
+                    <line x1="4" y1="17" x2="20" y2="17" />
+                </svg>
+            </button>
+            <button class="mobile-icon-btn" id="mobileDownloadBtn" title="下载PDF" aria-label="下载PDF">
+                <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M12 3v12" />
+                    <path d="M7 11l5 5 5-5" />
+                    <path d="M5 21h14" />
+                </svg>
+            </button>
+            <button class="mobile-icon-btn" id="mobileThumbBtn" title="页面预览" aria-label="页面预览">
+                <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="3" y="3" width="7" height="7" rx="1" />
+                    <rect x="14" y="3" width="7" height="7" rx="1" />
+                    <rect x="3" y="14" width="7" height="7" rx="1" />
+                    <rect x="14" y="14" width="7" height="7" rx="1" />
+                </svg>
+            </button>
+            <button class="mobile-icon-btn" id="mobileShareBtn" title="分享" aria-label="分享">
+                <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="18" cy="5" r="3" />
+                    <circle cx="6" cy="12" r="3" />
+                    <circle cx="18" cy="19" r="3" />
+                    <line x1="8.6" y1="10.7" x2="15.4" y2="6.3" />
+                    <line x1="8.6" y1="13.3" x2="15.4" y2="17.7" />
+                </svg>
+            </button>
+            <button class="mobile-icon-btn" id="mobileSearchBtn" title="搜索" aria-label="搜索">
+                <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="11" cy="11" r="7" />
+                    <line x1="16.5" y1="16.5" x2="21" y2="21" />
+                </svg>
+            </button>
+        </div>
+
+        <!-- 手机端搜索框：支持回车或点击右侧按钮触发搜索 -->
+        <div class="mobile-search-bar" id="mobileSearchBar">
+            <svg class="mobile-search-bar-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="11" cy="11" r="7" />
+                <line x1="16.5" y1="16.5" x2="21" y2="21" />
+            </svg>
+            <input type="text" id="mobileSearchInput" placeholder="输入关键字搜索..." />
+            <button type="button" class="mobile-search-submit" id="mobileSearchSubmit" aria-label="搜索">搜索</button>
+        </div>
+
+        <div class="mobile-drawer" id="mobileDrawer">
+            <div class="mobile-drawer-header">
+                <span id="drawerTitle">目录</span>
+                <button id="closeMobileDrawer" title="关闭">&times;</button>
+            </div>
+            <div class="drawer-body" id="drawerBody">
+                <div id="drawerToc"></div>
+                <div id="drawerThumb" class="drawer-view"></div>
+                <div id="drawerSearch" class="drawer-view">
+                    <div id="mobileSearchResults" class="search-results"></div>
+                </div>
+            </div>
+        </div>
+        <div class="mobile-backdrop" id="mobileBackdrop"></div>
+    </div>
+
+    <!-- 主 JS 尚未下载完时也按移动端规则记录封面操作，避免极早操作丢失。 -->
+    <script>
+        (() => {
+            const preview = document.getElementById('firstPagePreview');
+            const image = document.getElementById('firstPagePreviewImage');
+            if (!preview || !image) return;
+            const isMobile = () => window.matchMedia('(max-width: 768px) and (pointer: coarse)').matches;
+            const isCorner = (x, y, rect) => {
+                const localX = x - rect.left;
+                const localY = y - rect.top;
+                const size = Math.hypot(rect.width, rect.height) / 6;
+                return localX >= 0 && localX <= rect.width && localY >= 0 && localY <= rect.height
+                    && (localX < size || localX > rect.width - size)
+                    && (localY < size || localY > rect.height - size);
+            };
+            const queueNext = (corner = 'bottom') => {
+                window.__flipbookPreviewNextRequested = true;
+                window.__flipbookPreviewNextCorner = corner;
+                preview.classList.add('is-queued');
+            };
+            preview.addEventListener('click', (event) => {
+                if (!isMobile()) return;
+                const rect = image.getBoundingClientRect();
+                if (rect.width <= 0 || !isCorner(event.clientX, event.clientY, rect)) return;
+                if (event.clientX < rect.left + rect.width / 2) return;
+                queueNext('bottom');
+            }, true);
+
+            let touchStart = null;
+            preview.addEventListener('touchstart', (event) => {
+                if (!isMobile() || event.touches.length !== 1) return;
+                const touch = event.touches[0];
+                touchStart = { x: touch.clientX, y: touch.clientY, swiping: false };
+            }, { passive: true });
+            preview.addEventListener('touchmove', (event) => {
+                if (!isMobile() || !touchStart || event.touches.length !== 1) return;
+                const touch = event.touches[0];
+                const dx = touch.clientX - touchStart.x;
+                const dy = touch.clientY - touchStart.y;
+                if (Math.abs(dx) > 10 && Math.abs(dx) > Math.abs(dy) * 1.2) {
+                    touchStart.swiping = true;
+                    preview.classList.add('is-swiping');
+                    event.preventDefault();
+                }
+            }, { passive: false });
+            preview.addEventListener('touchend', (event) => {
+                if (!isMobile() || !touchStart || event.changedTouches.length !== 1) return;
+                const touch = event.changedTouches[0];
+                const dx = touch.clientX - touchStart.x;
+                const dy = touch.clientY - touchStart.y;
+                touchStart = null;
+                preview.classList.remove('is-swiping');
+                if (dx < -30 && Math.abs(dx) > Math.abs(dy) * 1.2) {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    queueNext('bottom');
+                }
+            }, { passive: false });
+            preview.addEventListener('touchcancel', () => {
+                touchStart = null;
+                preview.classList.remove('is-swiping');
+            }, { passive: true });
+        })();
+    </script>
+    <!-- finder.js 在 PDF 第一页绘制完成后由 tracker.js 异步加载。 -->
+    <script type="module" src="/src/main.js"></script>
+</body>
+</html>

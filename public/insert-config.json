@@ -1,0 +1,23 @@
+{
+  "_comment": "插入HTML页配置（主线使用）。pdf.path 指定当前 PDF（相对 public 根，如 sample.pdf）；打开时若实际 PDF 文件名与之不同，则禁用插入功能。insertions 数组按 afterPage 升序执行，可空。",
+
+  "pdf": {
+    "path": "“化”解之道-赢得化工企业绿色竞争力转型.pdf",
+    "name": "“化”解之道-赢得化工企业绿色竞争力转型.pdf"
+  },
+
+  "insertions": [
+    {
+      "afterPage": 1,
+      "htmlUrl": "/data/v19_single_pages/O2_目录台账｜横向分带_单页.html"
+    },
+    {
+      "afterPage": 2,
+      "htmlUrl": "/data/v19_single_pages/C3_纵向专题｜视频与要点_单页.html?v=20260901-video-track"
+    },
+    {
+      "afterPage": 57,
+      "htmlUrl": "/data/v19_single_pages/T1_当前版｜四项推荐_单页.html"
+    }
+  ]
+}
