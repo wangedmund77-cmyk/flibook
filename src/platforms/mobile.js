@@ -106,6 +106,13 @@ export function setupMobileUI() {
         mountTocIntoDrawer();
         openMobileDrawer('目录', 'toc');
     });
+    // 目录项自身先执行跳页，事件冒泡到目录容器后再关闭抽屉。
+    // 仅监听移动抽屉容器，因此 PC 目录点击后仍保持展开。
+    if (drawerToc) drawerToc.addEventListener('click', (event) => {
+        if (event.target instanceof Element && event.target.closest('.toc-item')) {
+            closeMobileDrawer();
+        }
+    });
 
     const downloadBtn = document.getElementById('mobileDownloadBtn');
     if (downloadBtn) downloadBtn.addEventListener('click', downloadPdf);

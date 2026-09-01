@@ -135,6 +135,19 @@ try {
     await waitForValue(cdp, sessionId, `window.store?.pageFlip && window.store.insertVisible === true`);
     await waitForValue(cdp, sessionId, `!document.getElementById('firstPagePreview')
         && window.store.pageFlip.getCurrentPageIndex() === 0`);
+    await cdp.send('Runtime.evaluate', {
+        expression: `document.getElementById('mobileTocBtn').click()`,
+    }, sessionId);
+    await waitForValue(cdp, sessionId, `document.getElementById('mobileDrawer')?.classList.contains('open')
+        && document.querySelectorAll('#drawerToc .toc-item').length > 0`);
+    await cdp.send('Runtime.evaluate', {
+        expression: `document.querySelector('#drawerToc .toc-item').click()`,
+    }, sessionId);
+    await waitForValue(cdp, sessionId, `!document.getElementById('mobileDrawer')?.classList.contains('open')`);
+    await cdp.send('Runtime.evaluate', {
+        expression: `window.store.pageFlip.turnToPage(0)`,
+    }, sessionId);
+    await waitForValue(cdp, sessionId, `window.store.pageFlip.getCurrentPageIndex() === 0`, 5000);
     await cdp.send('Runtime.evaluate', { expression: `(() => {
         const nativeFetch = window.fetch.bind(window);
         const nativeAnchorClick = HTMLAnchorElement.prototype.click;
@@ -256,7 +269,7 @@ try {
     if (!wechatResult.hasLegacyHandoff) {
         throw new Error(`iOS 微信未恢复下载中转参数：${JSON.stringify(wechatResult)}`);
     }
-    console.log('PASS: WAP 与微信下载行为已回滚；PC 强制下载逻辑保留；内容缩放与翻页正常');
+    console.log('PASS: 手机目录选择后自动关闭；下载回滚、内容缩放与翻页正常');
 } finally {
     if (cdp) {
         try { await cdp.send('Browser.close'); } catch { /* browser may already be gone */ }
