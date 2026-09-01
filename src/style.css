@@ -316,15 +316,17 @@ body[data-platform="mobile"] .pc-page-arrow {
     margin: 0 auto;
 }
 
-/* 手机端 pinch-zoom 是浏览器原生行为（作用在 viewport 上）。
-   PC 的 transform-origin: top left 会干扰原生 pinch 的锚点，导致缩放死盯左上角。
-   手机端改为 center center，使双指捏合以两指中心为锚点向四周扩散。
-   通过 body[data-platform] 隔离，PC 滑块 zoom 行为不受影响。 */
+/* 手机端双指缩放由 JS 只作用于阅读区，工具栏与底部滑轨保持固定尺寸。 */
 body[data-platform="mobile"] #zoomWrap {
-    transform-origin: center center;
+    transform-origin: top left;
     display: flex;
     align-items: center;
     justify-content: center;
+    touch-action: none;
+}
+
+body[data-platform="mobile"] .book-container.mobile-content-zoomed #zoomWrap {
+    will-change: transform;
 }
 
 #flipbook {
@@ -1455,16 +1457,14 @@ body[data-platform="pc"] .mobile-search-bar {
         height: 100dvh;
     }
 
-    /* 禁止整体页面滚动/橡皮筋：body 与容器全部锁定，不出现横纵滚动条。
-       但允许双指 pinch-zoom（浏览器级缩放）：用 manipulation 而非 none，
-       manipulation 禁用单指平移滚动、但保留双指缩放手势。 */
+    /* 禁止整体页面滚动和浏览器级缩放；双指缩放由阅读区内部手势处理。 */
     html, body {
         overflow: hidden !important;
         position: fixed;
         width: 100%;
         height: 100%;
         overscroll-behavior: none;
-        touch-action: manipulation; /* 允许 pinch-zoom，禁用单指平移 */
+        touch-action: none;
     }
 
     /* 覆盖 PC 极窄屏的 scroll-locked（手机端绝不允许出现滚动条） */
@@ -1492,6 +1492,7 @@ body[data-platform="pc"] .mobile-search-bar {
         /* 手机单页用 fixed 尺寸（JS 按容器宽×PDF比例算），此 height 仅作布局占位。
            跟随 flex 父 .main-content 撑满剩余高度，使 PDF 垂直方向也充满屏幕。 */
         height: 100%;
+        touch-action: none;
     }
 
     /* The static cover is the interaction surface until PDF.js is ready. It must match the

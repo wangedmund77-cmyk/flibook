@@ -90,6 +90,23 @@ const dispatchSwipe = async (cdp, sessionId, rect, direction) => {
     await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] }, sessionId);
 };
 
+const dispatchPinch = async (cdp, sessionId, center, fromHalfDistance, toHalfDistance) => {
+    const points = (halfDistance) => [
+        { x: center.x - halfDistance, y: center.y, id: 1, radiusX: 1, radiusY: 1, force: 1 },
+        { x: center.x + halfDistance, y: center.y, id: 2, radiusX: 1, radiusY: 1, force: 1 },
+    ];
+    await cdp.send('Input.dispatchTouchEvent', {
+        type: 'touchStart', touchPoints: points(fromHalfDistance),
+    }, sessionId);
+    await cdp.send('Input.dispatchTouchEvent', {
+        type: 'touchMove', touchPoints: points((fromHalfDistance + toHalfDistance) / 2),
+    }, sessionId);
+    await cdp.send('Input.dispatchTouchEvent', {
+        type: 'touchMove', touchPoints: points(toHalfDistance),
+    }, sessionId);
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] }, sessionId);
+};
+
 const profileDir = await mkdtemp(join(tmpdir(), 'flipbook-insert-swipe-'));
 let chrome;
 let cdp;
@@ -116,6 +133,41 @@ try {
     await cdp.send('Page.navigate', { url: targetUrl }, sessionId);
 
     await waitForValue(cdp, sessionId, `window.store?.pageFlip && window.store.insertVisible === true`);
+    await waitForValue(cdp, sessionId, `!document.getElementById('firstPagePreview')
+        && window.store.pageFlip.getCurrentPageIndex() === 0`);
+    const zoomTarget = await waitForValue(cdp, sessionId, `(() => {
+        const canvas = document.querySelector('#flipbook .page[data-page-num="1"] canvas');
+        const rect = canvas?.getBoundingClientRect();
+        if (!rect || rect.width <= 100 || rect.height <= 100) return null;
+        return { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
+    })()`);
+    const fixedUiBefore = await waitForValue(cdp, sessionId, `(() => {
+        const toolbar = document.querySelector('.mobile-toolbar').getBoundingClientRect();
+        const slider = document.querySelector('.page-slider-bar').getBoundingClientRect();
+        return { toolbar: [toolbar.width, toolbar.height], slider: [slider.width, slider.height] };
+    })()`);
+    await dispatchPinch(cdp, sessionId, zoomTarget, 40, 100);
+    await waitForValue(cdp, sessionId, `window.store.currentZoom > 2`);
+    const fixedUiAfter = await waitForValue(cdp, sessionId, `(() => {
+        const toolbar = document.querySelector('.mobile-toolbar').getBoundingClientRect();
+        const slider = document.querySelector('.page-slider-bar').getBoundingClientRect();
+        return {
+            toolbar: [toolbar.width, toolbar.height],
+            slider: [slider.width, slider.height],
+            viewportScale: window.visualViewport?.scale || 1,
+            contentTransform: getComputedStyle(document.getElementById('zoomWrap')).transform,
+        };
+    })()`);
+    const stable = [...fixedUiBefore.toolbar, ...fixedUiBefore.slider].every(
+        (value, index) => Math.abs(value - [...fixedUiAfter.toolbar, ...fixedUiAfter.slider][index]) < 0.5
+    );
+    if (!stable || Math.abs(fixedUiAfter.viewportScale - 1) > 0.01
+        || fixedUiAfter.contentTransform === 'none') {
+        throw new Error(`双指缩放错误地改变了固定 UI：${JSON.stringify({ fixedUiBefore, fixedUiAfter })}`);
+    }
+    await dispatchPinch(cdp, sessionId, zoomTarget, 100, 40);
+    await waitForValue(cdp, sessionId, `window.store.currentZoom <= 1.01`);
+
     await cdp.send('Runtime.evaluate', { expression: `window.store.pageFlip.flip(1)` }, sessionId);
     await waitForValue(cdp, sessionId, `window.store.pageFlip.getCurrentPageIndex() === 1`, 5000);
     const rect = await waitForValue(cdp, sessionId, `(() => {
@@ -128,13 +180,19 @@ try {
         return null;
     })()`);
 
+    const insertCenter = { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
+    await dispatchPinch(cdp, sessionId, insertCenter, 40, 100);
+    await waitForValue(cdp, sessionId, `window.store.currentZoom > 2`);
+    await dispatchPinch(cdp, sessionId, insertCenter, 100, 40);
+    await waitForValue(cdp, sessionId, `window.store.currentZoom <= 1.01`);
+
     await dispatchSwipe(cdp, sessionId, rect, 'next');
     await waitForValue(cdp, sessionId, `window.store.pageFlip.getCurrentPageIndex() > 1`, 5000);
     await cdp.send('Runtime.evaluate', { expression: `window.store.pageFlip.turnToPage(1)` }, sessionId);
     await waitForValue(cdp, sessionId, `window.store.pageFlip.getCurrentPageIndex() === 1`, 5000);
     await dispatchSwipe(cdp, sessionId, rect, 'prev');
     await waitForValue(cdp, sessionId, `window.store.pageFlip.getCurrentPageIndex() === 0`, 5000);
-    console.log('PASS: 移动端自定义页左右滑动均可翻页');
+    console.log('PASS: 手机双指仅缩放内容，固定 UI 尺寸不变；自定义页左右滑动均可翻页');
 } finally {
     if (cdp) {
         try { await cdp.send('Browser.close'); } catch { /* browser may already be gone */ }

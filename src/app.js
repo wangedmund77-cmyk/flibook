@@ -1298,6 +1298,9 @@ function isInteractiveBookTarget(target) {
 
 let mobileTurnTouchStart = null;
 let mobileMultiTouchActive = false;
+let mobilePinchGesture = null;
+let mobileZoomPanX = 0;
+let mobileZoomPanY = 0;
 
 const IOS_NATIVE_TEXT_OVERLAY_ID = 'iosNativeTextSelectionOverlay';
 const MOBILE_TEXT_LAYER_SELECTOR = `#flipbook .textLayer, #${IOS_NATIVE_TEXT_OVERLAY_ID} .textLayer`;
@@ -1642,17 +1645,146 @@ function extendMobileTextSelection(gesture, clientX, clientY, target) {
     return applyMobileTextSelection(gesture.selectionStart, gesture.selectionEnd);
 }
 
+function getMobileTouchMidpoint(touches) {
+    if (!touches || touches.length < 2) return null;
+    return {
+        x: (touches[0].clientX + touches[1].clientX) / 2,
+        y: (touches[0].clientY + touches[1].clientY) / 2,
+    };
+}
+
+function getMobileTouchDistance(touches) {
+    if (!touches || touches.length < 2) return 0;
+    return Math.hypot(
+        touches[1].clientX - touches[0].clientX,
+        touches[1].clientY - touches[0].clientY,
+    );
+}
+
+function getMobileZoomBounds(zoom = store.currentZoom) {
+    const container = document.querySelector('.book-container');
+    const width = container?.clientWidth || 0;
+    const height = container?.clientHeight || 0;
+    return {
+        minX: Math.min(0, width - width * zoom),
+        maxX: 0,
+        minY: Math.min(0, height - height * zoom),
+        maxY: 0,
+    };
+}
+
+function clampMobileZoomPan(zoom = store.currentZoom) {
+    const bounds = getMobileZoomBounds(zoom);
+    mobileZoomPanX = Math.min(bounds.maxX, Math.max(bounds.minX, mobileZoomPanX));
+    mobileZoomPanY = Math.min(bounds.maxY, Math.max(bounds.minY, mobileZoomPanY));
+}
+
+function renderMobileContentZoom() {
+    const wrap = document.getElementById('zoomWrap');
+    const container = document.querySelector('.book-container');
+    if (!wrap || !container) return;
+    const zoomed = store.currentZoom > 1.001;
+    if (!zoomed) {
+        mobileZoomPanX = 0;
+        mobileZoomPanY = 0;
+        wrap.style.transform = '';
+    } else {
+        clampMobileZoomPan();
+        wrap.style.transform = `translate3d(${mobileZoomPanX}px, ${mobileZoomPanY}px, 0) scale(${store.currentZoom})`;
+    }
+    container.classList.toggle('mobile-content-zoomed', zoomed);
+}
+
+function resetMobileContentZoom() {
+    if (!isMobileFn()) return;
+    cancelPendingZoomRender();
+    store.currentZoom = MIN_ZOOM;
+    mobileZoomPanX = 0;
+    mobileZoomPanY = 0;
+    renderMobileContentZoom();
+    document.getElementById('flipbook')?.removeAttribute('data-zoom-render-ready');
+    restoreBaseCanvasesAfterZoom();
+    scheduleIosNativeTextSelectionOverlay();
+}
+
+function beginMobilePinch(touches) {
+    const midpoint = getMobileTouchMidpoint(touches);
+    const distance = getMobileTouchDistance(touches);
+    const container = document.querySelector('.book-container');
+    const rect = container?.getBoundingClientRect();
+    if (!midpoint || !rect || distance <= 0) return false;
+    const startZoom = Math.max(MIN_ZOOM, Number(store.currentZoom) || MIN_ZOOM);
+    mobilePinchGesture = {
+        startDistance: distance,
+        startZoom,
+        localX: (midpoint.x - rect.left - mobileZoomPanX) / startZoom,
+        localY: (midpoint.y - rect.top - mobileZoomPanY) / startZoom,
+    };
+    hideIosNativeTextSelectionOverlay();
+    return true;
+}
+
+function updateMobilePinch(touches) {
+    if (!mobilePinchGesture && !beginMobilePinch(touches)) return;
+    const midpoint = getMobileTouchMidpoint(touches);
+    const distance = getMobileTouchDistance(touches);
+    const container = document.querySelector('.book-container');
+    const rect = container?.getBoundingClientRect();
+    if (!midpoint || !rect || distance <= 0) return;
+    const nextZoom = Math.min(
+        MAX_ZOOM,
+        Math.max(MIN_ZOOM, mobilePinchGesture.startZoom * distance / mobilePinchGesture.startDistance),
+    );
+    store.currentZoom = nextZoom;
+    mobileZoomPanX = midpoint.x - rect.left - mobilePinchGesture.localX * nextZoom;
+    mobileZoomPanY = midpoint.y - rect.top - mobilePinchGesture.localY * nextZoom;
+    renderMobileContentZoom();
+    cancelPendingZoomRender();
+    document.getElementById('flipbook')?.removeAttribute('data-zoom-render-ready');
+}
+
+function finishMobilePinch() {
+    mobilePinchGesture = null;
+    if (store.currentZoom <= 1.01) {
+        resetMobileContentZoom();
+        return;
+    }
+    scheduleZoomRender(store.currentZoom, true);
+    scheduleIosNativeTextSelectionOverlay(120);
+}
+
+function panMobileZoomedContent(gesture, touch) {
+    if (!gesture?.contentZoomed) return false;
+    const dx = touch.clientX - gesture.x;
+    const dy = touch.clientY - gesture.y;
+    if (Math.hypot(dx, dy) <= MOBILE_GESTURE_MOVE_TOLERANCE) return false;
+    gesture.moved = true;
+    clearMobileLongPressTimer(gesture);
+
+    // 已在左右边缘继续向外滑时保留翻页动作，其余方向用于查看放大内容。
+    if (Math.abs(dx) > Math.abs(dy) * 1.2 && shouldTurnAtMobileContentZoom(gesture, dx, dy)) {
+        return true;
+    }
+    mobileZoomPanX = gesture.panX + dx;
+    mobileZoomPanY = gesture.panY + dy;
+    renderMobileContentZoom();
+    hideIosNativeTextSelectionOverlay();
+    return true;
+}
+
 function handleMobileBookTouchStart(event) {
     if (!isMobileFn()) return;
     // 插入页属于后台增强；用户连续操作期间不要触发重建抢占翻页。
     store.__lastUserInteractionAt = performance.now();
     store.__hasUserInteracted = true;
     if (event.touches.length > 1) {
-        // 双指手势交给浏览器缩放；取消已经记录的单指翻页，避免最后一根手指抬起时被当成点击。
+        // 双指仅缩放阅读区；取消单指翻页，避免最后一根手指抬起时被当成点击。
         mobileMultiTouchActive = true;
+        beginMobilePinch(event.touches);
         clearMobileLongPressTimer(mobileTurnTouchStart);
         mobileTurnTouchStart = null;
         document.getElementById('flipbook')?.classList.remove('mobile-text-selecting');
+        if (event.cancelable) event.preventDefault();
         event.stopImmediatePropagation();
         event.stopPropagation();
         return;
@@ -1670,7 +1802,10 @@ function handleMobileBookTouchStart(event) {
         iosTextCandidate: iosInteraction && (startedOnText || startedOnIosOverlay),
         selectionMode: hasActiveMobileTextSelection(),
         moved: false,
-        nativeZoom: getMobileNativeZoomPanState(),
+        contentZoom: getMobileContentZoomPanState(),
+        contentZoomed: isMobileContentZoomed(),
+        panX: mobileZoomPanX,
+        panY: mobileZoomPanY,
         longPressTimer: null,
         selectionStart: null,
         selectionEnd: null,
@@ -1713,11 +1848,21 @@ function handleMobileBookTouchMove(event) {
     if (!isMobileFn()) return;
     if (mobileMultiTouchActive || event.touches.length > 1) {
         if (event.touches.length > 1) mobileMultiTouchActive = true;
+        if (event.touches.length > 1) updateMobilePinch(event.touches);
+        if (event.cancelable) event.preventDefault();
         event.stopImmediatePropagation();
         event.stopPropagation();
         return;
     }
     if (!mobileTurnTouchStart || event.touches.length !== 1) return;
+    const activeTextSelection = hasActiveMobileTextSelection();
+    if (!mobileTurnTouchStart.selectionMode && !activeTextSelection
+        && panMobileZoomedContent(mobileTurnTouchStart, event.touches[0])) {
+        if (event.cancelable) event.preventDefault();
+        event.stopImmediatePropagation();
+        event.stopPropagation();
+        return;
+    }
     if (isIOSMobileInteraction() && isIosNativeTextOverlayTarget(event.target)) {
         const touch = event.touches[0];
         const dx = touch.clientX - mobileTurnTouchStart.x;
@@ -1729,7 +1874,6 @@ function handleMobileBookTouchMove(event) {
         // 不截断 overlay 事件，让 WKWebView 继续处理长按选区和选择手柄拖动。
         return;
     }
-    const activeTextSelection = hasActiveMobileTextSelection();
     if (isIOSMobileInteraction()
         && (mobileTurnTouchStart.iosTextCandidate
             || mobileTurnTouchStart.selectionMode
@@ -1762,11 +1906,10 @@ function handleMobileBookTouchMove(event) {
         mobileTurnTouchStart.moved = true;
         clearMobileLongPressTimer(mobileTurnTouchStart);
     }
-    // Keep vertical browser scrolling available; when native zoom is active, only claim an
-    // outward horizontal swipe that starts at the corresponding visual-viewport edge.
+    // 放大内容中只有从左右边缘继续向外滑动才翻页，其余滑动用于平移内容。
     if (Math.abs(dx) > MOBILE_GESTURE_MOVE_TOLERANCE
         && Math.abs(dx) > Math.abs(dy) * 1.2
-        && shouldTurnAtMobileNativeZoom(mobileTurnTouchStart, dx, dy)) {
+        && shouldTurnAtMobileContentZoom(mobileTurnTouchStart, dx, dy)) {
         event.preventDefault();
     }
 }
@@ -1797,38 +1940,24 @@ function retryMobileTurn(turn) {
     attempt();
 }
 
-function isMobileNativeZoomed() {
-    if (!isMobileFn() || !window.visualViewport) return false;
-    return (Number(window.visualViewport.scale) || 1) > 1.01;
+function isMobileContentZoomed() {
+    return isMobileFn() && store.currentZoom > 1.01;
 }
 
-// 原生 pinch-zoom 后，visualViewport 会在布局视口内移动；只有向外侧继续滑动
-// 且手势开始时已经到达对应边缘，才交给翻页，向内侧滑动保留浏览器平移。
-function getMobileNativeZoomPanState() {
-    if (!isMobileNativeZoomed()) return null;
-    const viewport = window.visualViewport;
-    const scale = Number(viewport.scale) || 1;
-    const layoutWidth = Math.max(
-        Number(document.documentElement?.clientWidth) || 0,
-        Number(window.innerWidth) || 0,
-        (Number(viewport.width) || 0) * scale,
-    );
-    const viewportWidth = Number(viewport.width) || (layoutWidth > 0 ? layoutWidth / scale : 0);
-    const maxLeft = Math.max(0, layoutWidth - viewportWidth);
-    const rawLeft = Math.max(
-        Number(viewport.offsetLeft) || 0,
-        Number(viewport.pageLeft) || 0,
-        Number(window.scrollX) || 0,
-    );
-    const left = Math.min(maxLeft, Math.max(0, rawLeft));
+// 阅读区放大后，只有已经平移到对应边缘时，继续向外滑动才交给翻页。
+function getMobileContentZoomPanState() {
+    if (!isMobileContentZoomed()) return null;
+    const bounds = getMobileZoomBounds();
     return {
-        atLeft: left <= MOBILE_ZOOM_EDGE_EPSILON,
-        atRight: maxLeft - left <= MOBILE_ZOOM_EDGE_EPSILON,
+        atLeft: mobileZoomPanX >= bounds.maxX - MOBILE_ZOOM_EDGE_EPSILON,
+        atRight: mobileZoomPanX <= bounds.minX + MOBILE_ZOOM_EDGE_EPSILON,
     };
 }
 
-function shouldTurnAtMobileNativeZoom(gesture, dx, dy) {
-    const zoomState = gesture?.nativeZoom || getMobileNativeZoomPanState();
+window.__getMobileContentZoomPanState = getMobileContentZoomPanState;
+
+function shouldTurnAtMobileContentZoom(gesture, dx, dy) {
+    const zoomState = gesture?.contentZoom || getMobileContentZoomPanState();
     if (!zoomState) return true;
     const absX = Math.abs(dx);
     const absY = Math.abs(dy);
@@ -1915,7 +2044,7 @@ function startMobileTurn(direction, corner) {
     const canTurn = target !== current;
     if (canTurn) setPendingMobilePageView(current, target);
 
-    if (isMobileNativeZoomed() && pageFlip.turnToPage) {
+    if (isMobileContentZoomed() && pageFlip.turnToPage) {
         if (isMobilePageFlipAnimating()) return false;
         if (canTurn) pageFlip.turnToPage(target);
         return true;
@@ -1931,7 +2060,7 @@ function startMobileTurn(direction, corner) {
     return true;
 }
 
-// 原生放大时跳过 PageFlip 的 3D 翻页动画，避免浏览器缩放合成层与卷页阴影互相刷新。
+// 内容放大时跳过 PageFlip 的 3D 翻页动画，避免缩放合成层与卷页阴影互相刷新。
 // 未放大时保留原有动画；放大状态下仍通过 PageFlip 定位，确保 flip 事件链继续同步页码和目录。
 function turnMobilePage(direction, corner) {
     const pageFlip = store.pageFlip;
@@ -1953,7 +2082,9 @@ function turnMobilePage(direction, corner) {
 function handleMobileBookTouchEnd(event) {
     if (!isMobileFn()) return;
     if (mobileMultiTouchActive) {
+        if (event.touches.length < 2 && mobilePinchGesture) finishMobilePinch();
         if (event.touches.length === 0) mobileMultiTouchActive = false;
+        if (event.cancelable) event.preventDefault();
         event.stopImmediatePropagation();
         event.stopPropagation();
         return;
@@ -1991,7 +2122,7 @@ function handleMobileBookTouchEnd(event) {
     const corner = touch.clientY < rect.top + rect.height / 2 ? 'top' : 'bottom';
 
     if (absX >= MOBILE_SWIPE_DISTANCE && absX > absY * 1.2
-        && shouldTurnAtMobileNativeZoom(start, dx, dy)) {
+        && shouldTurnAtMobileContentZoom(start, dx, dy)) {
         event.preventDefault();
         event.stopPropagation();
         // 横向滑动统一使用 bottom 锚点，避免手指位于页面上半区时出现向下坠落的视觉轨迹。
@@ -2004,6 +2135,8 @@ function handleMobileBookTouchEnd(event) {
         retryMobileTurn(turn);
         return;
     }
+
+    if (start.contentZoomed && start.moved) return;
 
     // A stationary tap is a page-turn gesture only inside one of the four corner hot zones.
     if (Math.hypot(dx, dy) > MOBILE_GESTURE_MOVE_TOLERANCE
@@ -2027,6 +2160,7 @@ function handleMobileBookTouchCancel() {
     clearMobileLongPressTimer(mobileTurnTouchStart);
     mobileTurnTouchStart = null;
     mobileMultiTouchActive = false;
+    if (mobilePinchGesture) finishMobilePinch();
     document.getElementById('flipbook')?.classList.remove('mobile-text-selecting');
 }
 
@@ -2041,7 +2175,7 @@ function bindMobileTouchEvents(target) {
     if (!target) return;
     // 外置 iOS 文字层是 #flipbook 的兄弟节点，事件不会冒泡到翻页器；两者共用
     // 同一组稳定函数，浏览器会自动去重，重建后重复调用仍保持幂等。
-    target.addEventListener('touchstart', handleMobileBookTouchStart, { passive: true, capture: true });
+    target.addEventListener('touchstart', handleMobileBookTouchStart, { passive: false, capture: true });
     target.addEventListener('touchmove', handleMobileBookTouchMove, { passive: false, capture: true });
     target.addEventListener('touchend', handleMobileBookTouchEnd, { passive: false, capture: true });
     target.addEventListener('touchcancel', handleMobileBookTouchCancel, { passive: true, capture: true });
@@ -2227,6 +2361,22 @@ function bindInsertPageLinks() {
                 ? { clientX, clientY }
                 : null;
             togglePcBookZoom(focusPoint);
+            return;
+        }
+        // iframe 内容页的触摸事件不会冒泡到 #flipbook；由同源手势桥转成父页面坐标，
+        // 继续复用阅读区内部缩放，因此顶部工具栏和底部滑轨仍保持固定尺寸。
+        if (msg.type === 'insert-content-pinch') {
+            if (!isMobileFn()) return;
+            if (msg.phase === 'start') {
+                mobileMultiTouchActive = true;
+                beginMobilePinch(msg.touches);
+            } else if (msg.phase === 'move') {
+                mobileMultiTouchActive = true;
+                updateMobilePinch(msg.touches);
+            } else if (msg.phase === 'end') {
+                if (mobilePinchGesture) finishMobilePinch();
+                mobileMultiTouchActive = false;
+            }
             return;
         }
         // 手机端插入页 iframe 内左右滑动或四角点击 -> 通知父窗口翻页。
@@ -2896,9 +3046,8 @@ function pdfPageForSlider(index) {
 
 function getCurrentViewZoomRequest() {
     if (isMobileFn()) {
-        const viewportZoom = Number(window.visualViewport?.scale) || 1;
-        return viewportZoom > 1.01
-            ? { zoom: viewportZoom, trackStoreZoom: false }
+        return store.currentZoom > 1.01
+            ? { zoom: store.currentZoom, trackStoreZoom: true }
             : null;
     }
     return store.currentZoom > 1
@@ -3091,38 +3240,6 @@ function scheduleZoomRender(requestedZoom = store.currentZoom, trackStoreZoom = 
     }, ZOOM_RENDER_DEBOUNCE_MS);
 }
 
-function handleNativeViewportZoom() {
-    if (!isMobileFn() || !window.visualViewport) return;
-    const viewportZoom = Number(window.visualViewport.scale) || 1;
-    cancelPendingZoomRender();
-    document.getElementById('flipbook')?.removeAttribute('data-zoom-render-ready');
-    if (viewportZoom <= 1.01) {
-        if (store.currentZoom <= 1) {
-            if (isMobilePageFlipAnimating()) {
-                if (baseCanvasRestoreTimer !== null) clearTimeout(baseCanvasRestoreTimer);
-                baseCanvasRestoreTimer = setTimeout(() => {
-                    baseCanvasRestoreTimer = null;
-                    if (!isMobilePageFlipAnimating()
-                        && (Number(window.visualViewport?.scale) || 1) <= 1.01
-                        && store.currentZoom <= 1) {
-                        restoreBaseCanvasesAfterZoom();
-                    }
-                }, 820);
-            } else {
-                restoreBaseCanvasesAfterZoom();
-            }
-        }
-        return;
-    }
-    // resize 在双指缩放过程中会连续触发；scheduleZoomRender 的防抖会等手势稳定后
-    // 只重绘当前可见 PDF 页。离屏绘制完成前保留旧 Canvas，不阻断缩放交互。
-    scheduleZoomRender(viewportZoom, false);
-}
-
-if (window.visualViewport) {
-    window.visualViewport.addEventListener('resize', handleNativeViewportZoom, { passive: true });
-}
-
 // 记录双击点在未缩放页面中的坐标，供放大完成后恢复视口焦点。
 function captureZoomFocusPoint(point) {
     if (!point || !Number.isFinite(point.clientX) || !Number.isFinite(point.clientY)) return null;
@@ -3159,6 +3276,15 @@ function focusZoomPoint(focusPoint, zoom) {
 function applyZoom(delta, focusPoint = null, { force = false } = {}) {
     const newZoom = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, store.currentZoom + delta));
     if (newZoom === store.currentZoom && !force) return;
+    if (isMobileFn()) {
+        store.currentZoom = newZoom;
+        if (newZoom <= 1.01) resetMobileContentZoom();
+        else {
+            renderMobileContentZoom();
+            scheduleZoomRender(newZoom, true);
+        }
+        return;
+    }
     cancelPendingZoomRender();
     document.getElementById('flipbook')?.removeAttribute('data-zoom-render-ready');
     store.currentZoom = newZoom;

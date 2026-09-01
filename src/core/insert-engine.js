@@ -114,6 +114,10 @@ function getTopWindow(frameWindow) {
 
 function getMobileNativeZoomPanState(frameWindow) {
     const ownerWindow = getTopWindow(frameWindow);
+    try {
+        const contentZoomState = ownerWindow?.__getMobileContentZoomPanState?.();
+        if (contentZoomState) return contentZoomState;
+    } catch (error) { /* 跨域时继续使用旧版视口状态兜底 */ }
     const viewport = ownerWindow?.visualViewport || frameWindow?.visualViewport;
     if (!viewport) return null;
     const scale = Number(viewport.scale) || 1;
@@ -163,9 +167,8 @@ function injectMobileGestureBridge(iframe, doc) {
     const root = doc.documentElement;
     const ownerWindow = getTopWindow(frameWindow);
     const syncTouchAction = () => {
-        root.style.touchAction = getMobileNativeZoomPanState(frameWindow)
-            ? 'pan-x pan-y pinch-zoom'
-            : 'pan-y pinch-zoom';
+        // 外层阅读器接管双指缩放，iframe 不再触发浏览器视口缩放。
+        root.style.touchAction = getMobileNativeZoomPanState(frameWindow) ? 'none' : 'pan-y';
     };
     syncTouchAction();
     ownerWindow.visualViewport?.addEventListener('resize', syncTouchAction, { passive: true });
@@ -211,6 +214,24 @@ function injectMobileGestureBridge(iframe, doc) {
             console.warn('[insert] 自定义页翻页消息发送失败:', error);
         }
     };
+    const toParentTouches = (points) => {
+        const frameRect = iframe.getBoundingClientRect();
+        const frameWidth = iframe.clientWidth || frameWindow.innerWidth || frameRect.width || 1;
+        const frameHeight = iframe.clientHeight || frameWindow.innerHeight || frameRect.height || 1;
+        const scaleX = frameRect.width / frameWidth;
+        const scaleY = frameRect.height / frameHeight;
+        return Array.from(points || []).slice(0, 2).map((point) => ({
+            clientX: frameRect.left + point.clientX * scaleX,
+            clientY: frameRect.top + point.clientY * scaleY,
+        }));
+    };
+    const postPinch = (phase, points = []) => {
+        postTurn({
+            type: 'insert-content-pinch',
+            phase,
+            touches: toParentTouches(points),
+        });
+    };
     const finish = (x, y, target, event) => {
         const start = gesture;
         gesture = null;
@@ -255,19 +276,33 @@ function injectMobileGestureBridge(iframe, doc) {
     // Pointer Events 在现代 Android/iOS/微信 WebView 中更稳定，并覆盖触控笔；
     // touch-action 只接管横向手势，继续保留纵向与双指缩放。
     if (typeof frameWindow.PointerEvent === 'function') {
-        if (root?.style) root.style.touchAction = 'pan-y pinch-zoom';
-        const activePointers = new Set();
+        if (root?.style) root.style.touchAction = 'pan-y';
+        const activePointers = new Map();
         doc.addEventListener('pointerdown', (event) => {
             if (event.pointerType !== 'touch' && event.pointerType !== 'pen') return;
-            activePointers.add(event.pointerId);
+            activePointers.set(event.pointerId, { clientX: event.clientX, clientY: event.clientY });
+            if (activePointers.size >= 2) {
+                cancel();
+                postPinch('start', activePointers.values());
+                if (event.cancelable) event.preventDefault();
+                return;
+            }
             if (!event.isPrimary || activePointers.size !== 1) {
                 cancel();
                 return;
             }
             syncTouchAction();
             begin(event.clientX, event.clientY, event.target, event.pointerId);
-        }, { capture: true, passive: true });
+        }, { capture: true, passive: false });
         doc.addEventListener('pointermove', (event) => {
+            if (activePointers.has(event.pointerId)) {
+                activePointers.set(event.pointerId, { clientX: event.clientX, clientY: event.clientY });
+            }
+            if (activePointers.size >= 2) {
+                postPinch('move', activePointers.values());
+                if (event.cancelable) event.preventDefault();
+                return;
+            }
             if (!gesture || gesture.pointerId !== event.pointerId || activePointers.size !== 1) return;
             const dx = event.clientX - gesture.x;
             const dy = event.clientY - gesture.y;
@@ -283,12 +318,20 @@ function injectMobileGestureBridge(iframe, doc) {
                 && event.cancelable) event.preventDefault();
         }, { capture: true, passive: false });
         doc.addEventListener('pointerup', (event) => {
+            const wasPinching = activePointers.size >= 2;
             activePointers.delete(event.pointerId);
+            if (wasPinching) {
+                postPinch('end');
+                if (event.cancelable) event.preventDefault();
+                return;
+            }
             if (!gesture || gesture.pointerId !== event.pointerId || activePointers.size !== 0) return;
             finish(event.clientX, event.clientY, event.target, event);
         }, { capture: true, passive: false });
         doc.addEventListener('pointercancel', (event) => {
+            const wasPinching = activePointers.size >= 2;
             activePointers.delete(event.pointerId);
+            if (wasPinching) postPinch('end');
             if (gesture?.pointerId === event.pointerId) cancel();
         }, { capture: true, passive: true });
         return;
@@ -300,17 +343,21 @@ function injectMobileGestureBridge(iframe, doc) {
         if (event.touches.length !== 1) {
             multiTouch = true;
             cancel();
+            postPinch('start', event.touches);
+            if (event.cancelable) event.preventDefault();
             return;
         }
         if (multiTouch) return;
         const touch = event.touches[0];
         syncTouchAction();
         begin(touch.clientX, touch.clientY, event.target);
-    }, { capture: true, passive: true });
+    }, { capture: true, passive: false });
     doc.addEventListener('touchmove', (event) => {
         if (event.touches.length !== 1) {
             multiTouch = true;
             cancel();
+            postPinch('move', event.touches);
+            if (event.cancelable) event.preventDefault();
             return;
         }
         if (!gesture || multiTouch) return;
@@ -330,7 +377,9 @@ function injectMobileGestureBridge(iframe, doc) {
     }, { capture: true, passive: false });
     doc.addEventListener('touchend', (event) => {
         if (multiTouch) {
+            if (event.touches.length < 2) postPinch('end');
             if (event.touches.length === 0) multiTouch = false;
+            if (event.cancelable) event.preventDefault();
             cancel();
             return;
         }
@@ -339,6 +388,7 @@ function injectMobileGestureBridge(iframe, doc) {
         finish(touch.clientX, touch.clientY, event.target, event);
     }, { capture: true, passive: false });
     doc.addEventListener('touchcancel', () => {
+        if (multiTouch) postPinch('end');
         multiTouch = false;
         cancel();
     }, { capture: true, passive: true });
