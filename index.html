@@ -2,6 +2,19 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8" />
+    <!-- iOS 微信中点击下载时，会把当前页改成同源中转地址。微信仍显示阅读器；
+         用户通过右上角菜单交给外部浏览器后，再跳到正式附件链接。 -->
+    <script>
+        (() => {
+            const DOWNLOAD_HANDOFF_PARAM = 'se_download';
+            const DOWNLOAD_URL = 'https://nsma-web.schneider-electric.cn/platform/file/attachment/previewByUrl/eda08d684b1944bda08cbac02f128da0';
+            const isWeChat = /MicroMessenger|WeChatDevTools/i.test(navigator.userAgent || '');
+            const params = new URLSearchParams(window.location.search);
+            if (params.get(DOWNLOAD_HANDOFF_PARAM) === '1' && !isWeChat) {
+                window.location.replace(DOWNLOAD_URL);
+            }
+        })();
+    </script>
     <!-- Google Tag Manager：与火山埋点并行，异步加载失败不影响阅读器。 -->
     <script>
         (function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':

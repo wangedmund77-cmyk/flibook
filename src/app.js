@@ -55,6 +55,7 @@ const FIRST_INSERT_CONTENT_WAIT_MS = 1200;
 const DEFAULT_PDF_NAME = '“化”解之道-赢得化工企业绿色竞争力转型.pdf';
 const DEFAULT_DOWNLOAD_URL = 'https://nsma-web.schneider-electric.cn/platform/file/attachment/previewByUrl/eda08d684b1944bda08cbac02f128da0';
 const DEFAULT_DOWNLOAD_FILE_NAME = '“化”解之道-赢得化工企业绿色竞争力转型.pdf';
+const WECHAT_DOWNLOAD_HANDOFF_PARAM = 'se_download';
 // 放大态以 52px 翻页按钮条作为左右边界：按钮紧贴页面外侧，不额外留白。
 const PC_ZOOM_EDGE_GUTTER = 52;
 const PC_ZOOM_ARROW_GAP = 0;
@@ -3969,6 +3970,14 @@ function setupWechatIosDownloadGuide() {
 }
 
 function openWechatIosDownloadGuide(download) {
+    // 微信“在浏览器中打开”传递的是当前 WebView URL。改成同源中转 URL 不会离开
+    // 当前阅读器；外部浏览器打开该地址时，由 index.html 跳转到正式附件链接。
+    if (download?.url === DEFAULT_DOWNLOAD_URL && window.history?.replaceState) {
+        const handoffUrl = new URL(window.location.href);
+        handoffUrl.searchParams.set(WECHAT_DOWNLOAD_HANDOFF_PARAM, '1');
+        window.history.replaceState(window.history.state, '', handoffUrl);
+    }
+
     setupWechatIosDownloadGuide();
     const guide = document.getElementById('wechatIosDownloadGuide');
     const continueButton = document.getElementById('wechatIosContinueDownload');
